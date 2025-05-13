@@ -68,9 +68,7 @@ def pdf_to_base64(pdf_path):
         print(f" Error inesperado: {str(e)}")
 
 #-------------------------------------------------
-
-#vamo a ver si sirve
-def date_in_range(certificate_text,license):
+def date_in_range(certificate_text,start_date, end_date):
     """Verifica si una fecha encontrada en texto_certificado está entre licencia.start_date y licencia.end_date. """
     # Busca fechas en formato dd-mm-aaaa o dd/mm/aaaa
 
@@ -81,35 +79,32 @@ def date_in_range(certificate_text,license):
     day,month, year = map(int, match.groups())
     certificate_date = datetime(year,month,day).date()
     
-    return license.start_date <= certificate_date <= license.end_date
+    return start_date <= certificate_date <= end_date
 
-#vamo a ver si sirve
-def search_dni_in_text(text, dni):
-    """Busca un DNI (sin puntos) en un texto que puede tenerlo con/sin puntos/espacios.  """
-    # Elimina puntos y espacios del texto para normalizarlo
-    text_clean = re.sub(r'[.\s]', '', text)
-    # Busca el DNI (sin puntos) como palabra completa (\b = límite de palabra)
-    pattern = r'\b{}\b'.format(re.escape(str(dni)))
-    return re.search(pattern, text_clean) is not None
+import unicodedata
+import re
 
-#vamo a ver si sirve
-def search_in_pdf_text(text, search_terms):
-    """Busca términos en el texto, manejando DNIs en el texto con/sin puntos"""
-    text_lower = text.lower()  # Texto del certificado en minúsculas
-    
+def normalize_text(text):
+    # Convierte a minúsculas, elimina acentos y signos de puntuación
+    text = text.lower()
+    text = unicodedata.normalize('NFD', text)
+    text = text.encode('ascii', 'ignore').decode('utf-8')  #quita acentos
+    text = re.sub(r'[^\w\s]', '', text)  # quita puntuación
+    return text
+
+def search_in_pdf_text(normalized_text, search_terms):
     for term in search_terms:
         term_str = str(term).lower()
         
-        # Caso especial para DNIs (numéricos sin puntos)
-        if term_str.isdigit():  # Asume que el DNI en search_terms NO tiene puntos
-            if not search_dni_in_text(text_lower, term_str):  # Busca el DNI limpio
+        if term_str.isdigit():
+            #busca DNI directamente
+            if not re.search(r'\b' + re.escape(term_str) + r'\b', normalized_text):
                 return False
         else:
-            # Búsqueda normal para nombres/apellidos
-            if term_str not in text_lower:
+            normalized_term = normalize_text(term_str)
+            if normalized_term not in normalized_text:
                 return False
     return True
-
 #Paso el base64 a texto~
 #texto=base64_to_text("C:/Users/Usuario/Documents/LABORATORIO/certificados/texto_prueba.pdf",is_image=True)
 #texto=base64_a_texto(texto_base64,es_imagen=True)
