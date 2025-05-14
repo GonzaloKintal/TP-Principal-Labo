@@ -10,6 +10,13 @@ from datetime import datetime #podria no necesitarse
 from io import BytesIO
 from PyPDF2 import PdfReader
 from pdf2image import convert_from_path
+from nltk.stem import SnowballStemmer #NUEVO
+from nltk.corpus import stopwords #NUEVO
+
+#nltk>=3.6.2
+#pip install nltk
+#python -c "import nltk; nltk.download('stopwords')"
+
 
 def is_pdf_image(base64_pdf):
    """ Determina si el PDF es una imagen"""
@@ -34,6 +41,20 @@ def normalize_text(text):
     text = re.sub(r'\s+', ' ', text).strip()
     return text
 
+stopwords_es = set(stopwords.words('spanish'))  # Convertir a set
+extra_stopwords = {'certifica', 'certifico', 'fecha', 'firma', 'sello', 'certificado', 'matricula', 'hora','horas'} 
+stopwords_es.update(extra_stopwords)  
+
+stemmer = SnowballStemmer('spanish')
+
+def super_clean(text):
+    text = normalize_text(text)  # Primero aplica  normalización
+    words = [
+        stemmer.stem(w) 
+        for w in text.split() 
+        if (w not in stopwords_es and len(w) > 2)  # Filtra stopwords y palabras cortas
+    ]
+    return ' '.join(words)
 
 def base64_to_text(base64_pdf, is_image=False):
     """Decodifica un PDF en base64 y extrae texto. Usa OCR si is_image=True."""
