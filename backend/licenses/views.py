@@ -175,7 +175,6 @@ def create_license(request):
                     deleted_at=None
                 )
 
-                # Crear estado inicial como "pending"
             license.assign_status()
 
         return JsonResponse({'message': 'Licencia solicitada exitosamente.'}, status=200)
@@ -271,10 +270,22 @@ def update_license(request, id):
                                 is_deleted=False,
                                 deleted_at=None
                         )
-                        if license.status.name not in [Status.StatusChoices.APPROVED, Status.StatusChoices.REJECTED]:
-                            license.status.name=Status.StatusChoices.PENDING
-                            license.status.evaluation_comment='Pendiente de aprobación.'
-                            license.status.save()
+                if license.status.name not in [Status.StatusChoices.APPROVED, Status.StatusChoices.REJECTED]:
+                    try:
+                        certificate=license.certificate
+                    except Certificate.DoesNotExist:
+                        certificate=None
+
+                    if  not license.type.certificate_require:
+                        license.status.name = Status.StatusChoices.PENDING
+                        if certificate is not None:
+                            license.certificate.delete()
+                    elif license.type.certificate_require and certificate is None:
+                        license.status.name = Status.StatusChoices.MISSING_DOC
+                    else:
+                        license.status.name = Status.StatusChoices.PENDING
+                    
+                    license.status.save()
                 
                 return JsonResponse({'message': 'Licencia actualizada exitosamente.'}, status=200)
 
